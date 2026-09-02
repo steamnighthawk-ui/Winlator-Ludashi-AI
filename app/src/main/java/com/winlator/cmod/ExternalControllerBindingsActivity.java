@@ -110,7 +110,8 @@ public class ExternalControllerBindingsActivity extends AppCompatActivity {
 
         ExternalControllerBinding controllerBinding = controller.getControllerBinding(keyCode);
         int position;
-        if (controllerBinding == null || controllerBinding.getBinding() != Binding.NONE) {
+        boolean allowAdditionalBinding = !ExternalControllerBinding.isAnalogStickKeyCode(keyCode);
+        if (controllerBinding == null || (allowAdditionalBinding && controllerBinding.getBinding() != Binding.NONE)) {
             controllerBinding = new ExternalControllerBinding();
             controllerBinding.setKeyCode(keyCode);
             controllerBinding.setBinding(binding);
