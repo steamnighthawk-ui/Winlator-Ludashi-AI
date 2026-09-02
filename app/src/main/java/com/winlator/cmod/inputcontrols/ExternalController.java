@@ -180,8 +180,16 @@ public class ExternalController {
     private void processJoystickInput(MotionEvent event, int historyPos) {
         state.thumbLX = getCenteredAxis(event, MotionEvent.AXIS_X, historyPos);
         state.thumbLY = getCenteredAxis(event, MotionEvent.AXIS_Y, historyPos);
-        state.thumbRX = getCenteredAxis(event, MotionEvent.AXIS_Z, historyPos);
-        state.thumbRY = getCenteredAxis(event, MotionEvent.AXIS_RZ, historyPos);
+        // Android controllers expose the right stick as either Z/RZ (Xbox-style)
+        // or RX/RY (common on generic, DualShock and Bluetooth pads). Read both
+        // pairs and use the active value so right-stick mouse mappings work on
+        // either layout.
+        state.thumbRX = strongestAxis(
+                getCenteredAxis(event, MotionEvent.AXIS_Z, historyPos),
+                getCenteredAxis(event, MotionEvent.AXIS_RX, historyPos));
+        state.thumbRY = strongestAxis(
+                getCenteredAxis(event, MotionEvent.AXIS_RZ, historyPos),
+                getCenteredAxis(event, MotionEvent.AXIS_RY, historyPos));
 
         if (historyPos == -1) {
             float axisX = getCenteredAxis(event, MotionEvent.AXIS_HAT_X, historyPos);
@@ -192,6 +200,10 @@ public class ExternalController {
             state.dpad[2] = axisY == 1.0f && Math.abs(state.thumbLY) < ControlElement.STICK_DEAD_ZONE;
             state.dpad[3] = axisX == -1.0f && Math.abs(state.thumbLX) < ControlElement.STICK_DEAD_ZONE;
         }
+    }
+
+    private static float strongestAxis(float primary, float fallback) {
+        return Math.abs(fallback) > Math.abs(primary) ? fallback : primary;
     }
 
 
@@ -506,7 +518,9 @@ public class ExternalController {
 
         if (Math.abs(value) <= flat) return 0.0f;
 
-        if (axis == MotionEvent.AXIS_X || axis == MotionEvent.AXIS_Y || axis == MotionEvent.AXIS_Z || axis == MotionEvent.AXIS_RZ) {
+        if (axis == MotionEvent.AXIS_X || axis == MotionEvent.AXIS_Y ||
+                axis == MotionEvent.AXIS_Z || axis == MotionEvent.AXIS_RZ ||
+                axis == MotionEvent.AXIS_RX || axis == MotionEvent.AXIS_RY) {
              return Math.abs(value) >= ControlElement.STICK_DEAD_ZONE ? value : 0.0f;
         }
 
