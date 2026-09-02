@@ -113,12 +113,20 @@ public class ExternalController {
         return null;
     }
 
+    public ArrayList<ExternalControllerBinding> getControllerBindings(int keyCode) {
+        ArrayList<ExternalControllerBinding> result = new ArrayList<>();
+        for (ExternalControllerBinding binding : controllerBindings) {
+            if (binding.getKeyCode() == keyCode) result.add(binding);
+        }
+        return result;
+    }
+
     public ExternalControllerBinding getControllerBindingAt(int index) {
         return controllerBindings.get(index);
     }
 
     public void addControllerBinding(ExternalControllerBinding controllerBinding) {
-        if (getControllerBinding(controllerBinding.getKeyCode()) == null) controllerBindings.add(controllerBinding);
+        controllerBindings.add(controllerBinding);
     }
 
     public int getPosition(ExternalControllerBinding controllerBinding) {
