@@ -70,6 +70,10 @@ public class InputControlsView extends View {
     private final android.util.SparseArray<Bitmap> icons = new android.util.SparseArray<>();
     private Timer mouseMoveTimer;
     private final PointF mouseMoveOffset = new PointF();
+    // Controller mouse bindings must stay inside the hosted Windows application.
+    // They must not pass through the touchscreen-simulation pointer path.
+    private volatile boolean controllerMouseXAxisActive;
+    private volatile boolean controllerMouseYAxisActive;
     private boolean showTouchscreenControls = true;
     private int activeTouchPointerCount = 0;
 
@@ -432,7 +436,8 @@ public class InputControlsView extends View {
                 @Override
                 public void run() {
                     if (mouseMoveOffset.x != 0 || mouseMoveOffset.y != 0) {// Only move if there's an offset
-                        if (xServer.isRelativeMouseMovement())
+                        if (controllerMouseXAxisActive || controllerMouseYAxisActive ||
+                                xServer.isRelativeMouseMovement())
                             winHandler.mouseEvent(MouseEventFlags.MOVE, (int) (mouseMoveOffset.x * cursorSpeed * 10), (int) (mouseMoveOffset.y * cursorSpeed * 10), 0);
                         else
                             xServer.injectPointerMoveDelta(
@@ -866,10 +871,12 @@ public class InputControlsView extends View {
         else {
             if (binding == Binding.MOUSE_MOVE_LEFT || binding == Binding.MOUSE_MOVE_RIGHT) {
                 mouseMoveOffset.x = isActionDown ? (offset != 0 ? offset : (binding == Binding.MOUSE_MOVE_LEFT ? -1 : 1)) : 0;
+                if (controller != null) controllerMouseXAxisActive = isActionDown;
                 if (isActionDown) createMouseMoveTimer();
             }
             else if (binding == Binding.MOUSE_MOVE_DOWN || binding == Binding.MOUSE_MOVE_UP) {
                 mouseMoveOffset.y = isActionDown ? (offset != 0 ? offset : (binding == Binding.MOUSE_MOVE_UP ? -1 : 1)) : 0;
+                if (controller != null) controllerMouseYAxisActive = isActionDown;
                 if (isActionDown) createMouseMoveTimer();
             }
             else {
