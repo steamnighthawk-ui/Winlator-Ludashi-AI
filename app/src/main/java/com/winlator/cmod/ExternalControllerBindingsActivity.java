@@ -46,6 +46,7 @@ public class ExternalControllerBindingsActivity extends AppCompatActivity {
     private ExternalController controller;
     private RecyclerView recyclerView;
     private ControllerBindingsAdapter adapter;
+    private TextView bindingCountTextView;
 
     // Track trigger state to only register on rising edge
     private boolean l2WasPressed = false;
@@ -76,9 +77,9 @@ public class ExternalControllerBindingsActivity extends AppCompatActivity {
         actionBar.setHomeAsUpIndicator(R.drawable.icon_action_bar_back);
 
         emptyTextView = findViewById(R.id.TVEmptyText);
+        bindingCountTextView = findViewById(R.id.TVBindingCount);
         recyclerView = findViewById(R.id.RecyclerView);
         recyclerView.setLayoutManager(new LinearLayoutManager(this));
-        recyclerView.addItemDecoration(new DividerItemDecoration(this, DividerItemDecoration.VERTICAL));
         recyclerView.setAdapter(adapter = new ControllerBindingsAdapter());
         updateEmptyTextView();
     }
@@ -266,6 +267,7 @@ public class ExternalControllerBindingsActivity extends AppCompatActivity {
             private final Spinner bindingType;
             private final Spinner binding;
             private final Spinner activationMode;
+            private final View activationRow;
 
             private ViewHolder(View view) {
                 super(view);
@@ -273,6 +275,7 @@ public class ExternalControllerBindingsActivity extends AppCompatActivity {
                 this.bindingType = view.findViewById(R.id.SBindingType);
                 this.binding = view.findViewById(R.id.SBinding);
                 this.activationMode = view.findViewById(R.id.SActivationMode);
+                this.activationRow = view.findViewById(R.id.ActivationRow);
                 this.removeButton = view.findViewById(R.id.BTRemove);
             }
         }
@@ -288,6 +291,12 @@ public class ExternalControllerBindingsActivity extends AppCompatActivity {
             final ExternalControllerBinding item = controller.getControllerBindingAt(position);
             holder.title.setText(item.toString());
             loadBindingSpinner(holder, item);
+            boolean analogStick = ExternalControllerBinding.isAnalogStickKeyCode(item.getKeyCode());
+            holder.activationRow.setVisibility(analogStick ? View.GONE : View.VISIBLE);
+            if (analogStick && item.getActivationMode() != ExternalControllerBinding.ActivationMode.PRESS) {
+                item.setActivationMode(ExternalControllerBinding.ActivationMode.PRESS);
+                profile.save();
+            }
             holder.activationMode.setAdapter(new ArrayAdapter<>(ExternalControllerBindingsActivity.this,
                     android.R.layout.simple_spinner_dropdown_item,
                     new String[]{"Press", "Long press", "Double tap"}));
@@ -388,6 +397,8 @@ public class ExternalControllerBindingsActivity extends AppCompatActivity {
 
     private void updateEmptyTextView() {
         emptyTextView.setVisibility(adapter.getItemCount() == 0 ? View.VISIBLE : View.GONE);
+        bindingCountTextView.setText(getResources().getQuantityString(
+                R.plurals.controller_binding_count, adapter.getItemCount(), adapter.getItemCount()));
     }
 
     private void animateItemView(int position) {

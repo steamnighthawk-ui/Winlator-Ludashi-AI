@@ -103,6 +103,16 @@
     <string name="audio_driver">Audio Driver</string>
     <string name="loading">Loading…</string>
     <string name="press_any_button_on_your_controller">Press any button on your controller</string>
+    <string name="controller_binding_steps">1. Press an input  •  2. Choose when  •  3. Choose an action</string>
+    <string name="controller_binding_help">Press an assigned button again to add another action. Analog-stick directions allow one action each.</string>
+    <string name="controller_binding_empty">No bindings yet\n\nPress a controller button or move a stick to begin.</string>
+    <string name="binding_when">When</string>
+    <string name="binding_action">Action</string>
+    <string name="remove_binding">Remove binding</string>
+    <plurals name="controller_binding_count">
+        <item quantity="one">%d binding</item>
+        <item quantity="other">%d bindings</item>
+    </plurals>
     <string name="bindings">bindings</string>
     <string name="show_touchscreen_controls">Show Touchscreen Controls</string>
     <string name="dxwrapper">DX Wrapper</string>
