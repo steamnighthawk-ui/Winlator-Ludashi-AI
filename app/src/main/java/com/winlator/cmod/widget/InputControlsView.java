@@ -74,6 +74,11 @@ public class InputControlsView extends View {
     // They must not pass through the touchscreen-simulation pointer path.
     private volatile boolean controllerMouseXAxisActive;
     private volatile boolean controllerMouseYAxisActive;
+    private volatile float controllerMouseTargetX;
+    private volatile float controllerMouseTargetY;
+    private volatile boolean controllerMouseFilterSettling;
+    private static final float CONTROLLER_MOUSE_SMOOTHING = 0.32f;
+    private static final float CONTROLLER_MOUSE_STOP_EPSILON = 0.008f;
     private boolean showTouchscreenControls = true;
     private int activeTouchPointerCount = 0;
 
@@ -435,8 +440,21 @@ public class InputControlsView extends View {
             mouseMoveTimer.schedule(new TimerTask() {
                 @Override
                 public void run() {
+                    boolean controllerMouseFiltering = controllerMouseXAxisActive || controllerMouseYAxisActive ||
+                            controllerMouseFilterSettling;
+                    if (controllerMouseFiltering) {
+                        mouseMoveOffset.x += (controllerMouseTargetX - mouseMoveOffset.x) * CONTROLLER_MOUSE_SMOOTHING;
+                        mouseMoveOffset.y += (controllerMouseTargetY - mouseMoveOffset.y) * CONTROLLER_MOUSE_SMOOTHING;
+                        if (!controllerMouseXAxisActive && Math.abs(mouseMoveOffset.x) < CONTROLLER_MOUSE_STOP_EPSILON)
+                            mouseMoveOffset.x = 0;
+                        if (!controllerMouseYAxisActive && Math.abs(mouseMoveOffset.y) < CONTROLLER_MOUSE_STOP_EPSILON)
+                            mouseMoveOffset.y = 0;
+                        if (!controllerMouseXAxisActive && !controllerMouseYAxisActive &&
+                                mouseMoveOffset.x == 0 && mouseMoveOffset.y == 0)
+                            controllerMouseFilterSettling = false;
+                    }
                     if (mouseMoveOffset.x != 0 || mouseMoveOffset.y != 0) {// Only move if there's an offset
-                        if (controllerMouseXAxisActive || controllerMouseYAxisActive ||
+                        if (controllerMouseFiltering ||
                                 xServer.isRelativeMouseMovement())
                             winHandler.mouseEvent(MouseEventFlags.MOVE, (int) (mouseMoveOffset.x * cursorSpeed * 10), (int) (mouseMoveOffset.y * cursorSpeed * 10), 0);
                         else
@@ -870,13 +888,21 @@ public class InputControlsView extends View {
         }
         else {
             if (binding == Binding.MOUSE_MOVE_LEFT || binding == Binding.MOUSE_MOVE_RIGHT) {
-                mouseMoveOffset.x = isActionDown ? (offset != 0 ? offset : (binding == Binding.MOUSE_MOVE_LEFT ? -1 : 1)) : 0;
-                if (controller != null) controllerMouseXAxisActive = isActionDown;
+                float value = isActionDown ? (offset != 0 ? offset : (binding == Binding.MOUSE_MOVE_LEFT ? -1 : 1)) : 0;
+                if (controller != null) {
+                    controllerMouseTargetX = shapeControllerMouseAxis(value);
+                    controllerMouseXAxisActive = isActionDown;
+                    controllerMouseFilterSettling = true;
+                } else mouseMoveOffset.x = value;
                 if (isActionDown) createMouseMoveTimer();
             }
             else if (binding == Binding.MOUSE_MOVE_DOWN || binding == Binding.MOUSE_MOVE_UP) {
-                mouseMoveOffset.y = isActionDown ? (offset != 0 ? offset : (binding == Binding.MOUSE_MOVE_UP ? -1 : 1)) : 0;
-                if (controller != null) controllerMouseYAxisActive = isActionDown;
+                float value = isActionDown ? (offset != 0 ? offset : (binding == Binding.MOUSE_MOVE_UP ? -1 : 1)) : 0;
+                if (controller != null) {
+                    controllerMouseTargetY = shapeControllerMouseAxis(value);
+                    controllerMouseYAxisActive = isActionDown;
+                    controllerMouseFilterSettling = true;
+                } else mouseMoveOffset.y = value;
                 if (isActionDown) createMouseMoveTimer();
             }
             else {
@@ -904,6 +930,16 @@ public class InputControlsView extends View {
                 }
             }
         }
+    }
+
+    private static float shapeControllerMouseAxis(float value) {
+        float magnitude = Math.abs(value);
+        if (magnitude <= ControlElement.STICK_DEAD_ZONE) return 0;
+        float normalized = (magnitude - ControlElement.STICK_DEAD_ZONE) /
+                (1.0f - ControlElement.STICK_DEAD_ZONE);
+        // Quadratic response suppresses small center noise while preserving full speed.
+        normalized *= normalized;
+        return Math.copySign(Math.min(normalized, 1.0f), value);
     }
 
 
