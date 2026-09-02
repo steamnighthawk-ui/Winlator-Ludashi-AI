@@ -16,6 +16,7 @@ import android.graphics.PorterDuff;
 import android.graphics.PorterDuffColorFilter;
 import android.graphics.Rect;
 import android.os.Handler;
+import android.os.Looper;
 import android.os.VibrationEffect;
 import android.os.Vibrator;
 import android.util.Log;
@@ -80,6 +81,12 @@ public class InputControlsView extends View {
     private ControlElement stickElement;
 
     private boolean focusOnStick = false; // A flag to determine if we are focusing on the stick
+    private static final long LONG_PRESS_MS = 500;
+    private static final long DOUBLE_TAP_MS = 300;
+    private final Handler bindingGestureHandler = new Handler(Looper.getMainLooper());
+    private final android.util.SparseArray<Runnable> pendingLongPresses = new android.util.SparseArray<>();
+    private final android.util.SparseBooleanArray longPressActivated = new android.util.SparseBooleanArray();
+    private final android.util.SparseLongArray lastTapTimes = new android.util.SparseLongArray();
 
     public boolean isFocusedOnStick() {
         return focusOnStick;
@@ -713,22 +720,60 @@ public class InputControlsView extends View {
             ExternalController controller = profile.getController(event.getDeviceId());
             
             if (controller != null) {
-                ExternalControllerBinding controllerBinding = controller.getControllerBinding(event.getKeyCode());
-                
-                if (controllerBinding != null) {
-                    int action = event.getAction();
-
-                    if (action == KeyEvent.ACTION_DOWN) {
-                        handleInputEvent(controller, controllerBinding.getBinding(), true);
-                    }
-                    else if (action == KeyEvent.ACTION_UP) {
-                        handleInputEvent(controller, controllerBinding.getBinding(), false);
-                    }
+                java.util.ArrayList<ExternalControllerBinding> bindings = controller.getControllerBindings(event.getKeyCode());
+                if (!bindings.isEmpty()) {
+                    handleControllerBindingGesture(controller, event.getKeyCode(), bindings, event.getAction());
                     return true;
                 }
             }
         }
         return false;
+    }
+
+    private void handleControllerBindingGesture(ExternalController controller, int keyCode,
+                                                java.util.ArrayList<ExternalControllerBinding> bindings,
+                                                int action) {
+        if (action == KeyEvent.ACTION_DOWN) {
+            for (ExternalControllerBinding item : bindings) {
+                if (item.getActivationMode() == ExternalControllerBinding.ActivationMode.PRESS)
+                    handleInputEvent(controller, item.getBinding(), true);
+            }
+
+            Runnable old = pendingLongPresses.get(keyCode);
+            if (old != null) bindingGestureHandler.removeCallbacks(old);
+            Runnable longPress = () -> {
+                longPressActivated.put(keyCode, true);
+                for (ExternalControllerBinding item : controller.getControllerBindings(keyCode)) {
+                    if (item.getActivationMode() == ExternalControllerBinding.ActivationMode.LONG_PRESS)
+                        handleInputEvent(controller, item.getBinding(), true);
+                }
+            };
+            pendingLongPresses.put(keyCode, longPress);
+            longPressActivated.put(keyCode, false);
+            bindingGestureHandler.postDelayed(longPress, LONG_PRESS_MS);
+
+            long now = android.os.SystemClock.uptimeMillis();
+            if (now - lastTapTimes.get(keyCode, 0) <= DOUBLE_TAP_MS) {
+                for (ExternalControllerBinding item : bindings) {
+                    if (item.getActivationMode() == ExternalControllerBinding.ActivationMode.DOUBLE_TAP)
+                        handleInputEvent(controller, item.getBinding(), true);
+                }
+                lastTapTimes.delete(keyCode);
+            } else lastTapTimes.put(keyCode, now);
+        } else if (action == KeyEvent.ACTION_UP) {
+            Runnable pending = pendingLongPresses.get(keyCode);
+            if (pending != null) bindingGestureHandler.removeCallbacks(pending);
+            pendingLongPresses.remove(keyCode);
+            for (ExternalControllerBinding item : bindings) {
+                if (item.getActivationMode() == ExternalControllerBinding.ActivationMode.PRESS ||
+                        item.getActivationMode() == ExternalControllerBinding.ActivationMode.DOUBLE_TAP ||
+                        (item.getActivationMode() == ExternalControllerBinding.ActivationMode.LONG_PRESS &&
+                                longPressActivated.get(keyCode))) {
+                    handleInputEvent(controller, item.getBinding(), false);
+                }
+            }
+            longPressActivated.delete(keyCode);
+        }
     }
 
     public void handleInputEvent(Binding binding, boolean isActionDown) {
