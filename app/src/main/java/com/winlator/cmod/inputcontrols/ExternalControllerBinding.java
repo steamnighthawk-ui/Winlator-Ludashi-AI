@@ -102,4 +102,8 @@ public class ExternalControllerBinding {
         }
     }
 
+    public static boolean isAnalogStickKeyCode(int keyCode) {
+        return keyCode >= AXIS_RZ_POSITIVE && keyCode <= AXIS_X_NEGATIVE;
+    }
+
 }
