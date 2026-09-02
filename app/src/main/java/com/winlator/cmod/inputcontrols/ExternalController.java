@@ -126,6 +126,11 @@ public class ExternalController {
     }
 
     public void addControllerBinding(ExternalControllerBinding controllerBinding) {
+        // Buttons may intentionally have several actions. Analog stick directions
+        // must remain one-to-one so competing mappings cannot overwrite mouse or
+        // gamepad axis state during the same motion event.
+        if (ExternalControllerBinding.isAnalogStickKeyCode(controllerBinding.getKeyCode()) &&
+                getControllerBinding(controllerBinding.getKeyCode()) != null) return;
         controllerBindings.add(controllerBinding);
     }
 
