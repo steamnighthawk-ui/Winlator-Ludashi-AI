@@ -9,6 +9,7 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 public class ExternalControllerBinding {
+    public enum ActivationMode { PRESS, LONG_PRESS, DOUBLE_TAP }
     public static final byte AXIS_X_NEGATIVE = -1;
     public static final byte AXIS_X_POSITIVE = -2;
     public static final byte AXIS_Y_NEGATIVE = -3;
@@ -19,6 +20,7 @@ public class ExternalControllerBinding {
     public static final byte AXIS_RZ_POSITIVE = -8;
     private short keyCode;
     private Binding binding = Binding.NONE;
+    private ActivationMode activationMode = ActivationMode.PRESS;
 
     public int getKeyCode() {
         return keyCode;
@@ -36,11 +38,18 @@ public class ExternalControllerBinding {
         this.binding = binding;
     }
 
+    public ActivationMode getActivationMode() { return activationMode; }
+
+    public void setActivationMode(ActivationMode activationMode) {
+        this.activationMode = activationMode == null ? ActivationMode.PRESS : activationMode;
+    }
+
     public JSONObject toJSONObject() {
         try {
             JSONObject controllerBindingJSONObject = new JSONObject();
             controllerBindingJSONObject.put("keyCode", keyCode);
             controllerBindingJSONObject.put("binding", binding.name());
+            controllerBindingJSONObject.put("activationMode", activationMode.name());
             return controllerBindingJSONObject;
         }
         catch (JSONException e) {
