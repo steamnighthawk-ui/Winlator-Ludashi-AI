@@ -205,6 +205,12 @@ public class ControlsProfile implements Comparable<ControlsProfile> {
                     ExternalControllerBinding controllerBinding = new ExternalControllerBinding();
                     controllerBinding.setKeyCode(controllerBindingJSONObject.getInt("keyCode"));
                     controllerBinding.setBinding(Binding.fromString(controllerBindingJSONObject.getString("binding")));
+                    if (controllerBindingJSONObject.has("activationMode")) {
+                        try {
+                            controllerBinding.setActivationMode(ExternalControllerBinding.ActivationMode.valueOf(
+                                    controllerBindingJSONObject.getString("activationMode")));
+                        } catch (IllegalArgumentException ignored) {}
+                    }
                     controller.addControllerBinding(controllerBinding);
                 }
                 controllers.add(controller);
