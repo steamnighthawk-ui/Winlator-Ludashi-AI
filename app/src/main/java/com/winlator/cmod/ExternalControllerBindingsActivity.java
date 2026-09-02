@@ -110,7 +110,7 @@ public class ExternalControllerBindingsActivity extends AppCompatActivity {
 
         ExternalControllerBinding controllerBinding = controller.getControllerBinding(keyCode);
         int position;
-        if (controllerBinding == null) {
+        if (controllerBinding == null || controllerBinding.getBinding() != Binding.NONE) {
             controllerBinding = new ExternalControllerBinding();
             controllerBinding.setKeyCode(keyCode);
             controllerBinding.setBinding(binding);
@@ -264,12 +264,14 @@ public class ExternalControllerBindingsActivity extends AppCompatActivity {
             private final TextView title;
             private final Spinner bindingType;
             private final Spinner binding;
+            private final Spinner activationMode;
 
             private ViewHolder(View view) {
                 super(view);
                 this.title = view.findViewById(R.id.TVTitle);
                 this.bindingType = view.findViewById(R.id.SBindingType);
                 this.binding = view.findViewById(R.id.SBinding);
+                this.activationMode = view.findViewById(R.id.SActivationMode);
                 this.removeButton = view.findViewById(R.id.BTRemove);
             }
         }
@@ -285,6 +287,17 @@ public class ExternalControllerBindingsActivity extends AppCompatActivity {
             final ExternalControllerBinding item = controller.getControllerBindingAt(position);
             holder.title.setText(item.toString());
             loadBindingSpinner(holder, item);
+            holder.activationMode.setAdapter(new ArrayAdapter<>(ExternalControllerBindingsActivity.this,
+                    android.R.layout.simple_spinner_dropdown_item,
+                    new String[]{"Press", "Long press", "Double tap"}));
+            holder.activationMode.setSelection(item.getActivationMode().ordinal(), false);
+            holder.activationMode.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+                @Override public void onItemSelected(AdapterView<?> parent, View view, int selected, long id) {
+                    ExternalControllerBinding.ActivationMode mode = ExternalControllerBinding.ActivationMode.values()[selected];
+                    if (item.getActivationMode() != mode) { item.setActivationMode(mode); profile.save(); }
+                }
+                @Override public void onNothingSelected(AdapterView<?> parent) {}
+            });
             holder.removeButton.setOnClickListener((view) -> {
                 controller.removeControllerBinding(item);
                 profile.save();
