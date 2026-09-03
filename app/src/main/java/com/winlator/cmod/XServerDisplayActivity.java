@@ -2515,12 +2515,10 @@ public class XServerDisplayActivity extends AppCompatActivity {
     public boolean dispatchKeyEvent(KeyEvent event) {
 
         int keyCode = event.getKeyCode();
-        boolean controllerEvent = ExternalController.isGameController(event.getDevice());
-
-        // Controller Back/Select (and Android Back) is a dedicated, manual
-        // container shutdown shortcut. Confirmation prevents accidental exits.
-        if ((controllerEvent && keyCode == KeyEvent.KEYCODE_BUTTON_SELECT) ||
-                keyCode == KeyEvent.KEYCODE_BACK) {
+        // The Retroid Pocket lower-right Android Back button is the only
+        // dedicated container-shutdown shortcut. Controller Select remains
+        // available to the game and controller profile.
+        if (keyCode == KeyEvent.KEYCODE_BACK) {
             if (event.getAction() == KeyEvent.ACTION_DOWN && event.getRepeatCount() == 0)
                 requestContainerShutdown();
             return true;
