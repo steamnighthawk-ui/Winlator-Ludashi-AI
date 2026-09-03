@@ -338,7 +338,8 @@ public class XServerDisplayActivity extends AppCompatActivity {
         drawerLayout = findViewById(R.id.DrawerLayout);
         drawerLayout.setOnApplyWindowInsetsListener(
                 (view, windowInsets) -> windowInsets.replaceSystemWindowInsets(0, 0, 0, 0));
-        drawerLayout.setDrawerLockMode(DrawerLayout.LOCK_MODE_LOCKED_CLOSED);
+        // Keep the sidebar available through a touchscreen swipe from the left edge.
+        drawerLayout.setDrawerLockMode(DrawerLayout.LOCK_MODE_UNLOCKED);
         drawerLayout.addDrawerListener(new DrawerLayout.SimpleDrawerListener() {
             @Override
             public void onDrawerOpened(View drawerView) {
