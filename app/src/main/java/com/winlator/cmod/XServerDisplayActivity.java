@@ -2514,9 +2514,24 @@ public class XServerDisplayActivity extends AppCompatActivity {
     @Override
     public boolean dispatchKeyEvent(KeyEvent event) {
 
+        int keyCode = event.getKeyCode();
+        boolean controllerEvent = ExternalController.isGameController(event.getDevice());
+
+        // The Guide/Home button belongs to Winlator while a session is active.
+        // Toggle the sidebar and never forward it to the hosted Windows app.
+        if (keyCode == KeyEvent.KEYCODE_BUTTON_MODE || keyCode == KeyEvent.KEYCODE_HOME) {
+            if (event.getAction() == KeyEvent.ACTION_DOWN && event.getRepeatCount() == 0)
+                toggleSidebarFromController();
+            return true;
+        }
+
+        // While the drawer is open, let the controller operate Android sidebar
+        // controls instead of applying the game's controller profile.
+        if (controllerEvent && drawerLayout != null && drawerLayout.isDrawerOpen(GravityCompat.START) &&
+                handleSidebarControllerKey(event)) return true;
+
         if (event.getAction() == KeyEvent.ACTION_DOWN) {
-            if (event.getKeyCode() == KeyEvent.KEYCODE_BUTTON_MODE || event.getKeyCode() == KeyEvent.KEYCODE_HOME
-                    || event.getKeyCode() == KeyEvent.KEYCODE_BUTTON_SELECT) {
+            if (event.getKeyCode() == KeyEvent.KEYCODE_BUTTON_SELECT) {
                 boolean handled = inputControlsView.onKeyEvent(event)
                         || (winHandler != null && winHandler.onKeyEvent(event))
                                 && (xServer != null && xServer.keyboard.onKeyEvent(event));
@@ -2527,6 +2542,51 @@ public class XServerDisplayActivity extends AppCompatActivity {
         return (!inputControlsView.onKeyEvent(event) && !winHandler.onKeyEvent(event)
                 && xServer.keyboard.onKeyEvent(event)) ||
                 (!ExternalController.isGameController(event.getDevice()) && super.dispatchKeyEvent(event));
+    }
+
+    private void toggleSidebarFromController() {
+        if (drawerLayout == null || environment == null) return;
+        if (drawerLayout.isDrawerOpen(GravityCompat.START)) {
+            drawerLayout.closeDrawer(GravityCompat.START);
+        } else {
+            drawerLayout.openDrawer(GravityCompat.START);
+            drawerLayout.post(() -> {
+                View active = findViewById(activeSidebarItemId);
+                if (active == null || !active.isShown()) active = findViewById(R.id.BTItemGraphics);
+                if (active != null) active.requestFocus();
+            });
+        }
+    }
+
+    private boolean handleSidebarControllerKey(KeyEvent event) {
+        int keyCode = event.getKeyCode();
+        boolean supported = keyCode == KeyEvent.KEYCODE_DPAD_UP ||
+                keyCode == KeyEvent.KEYCODE_DPAD_DOWN ||
+                keyCode == KeyEvent.KEYCODE_DPAD_LEFT ||
+                keyCode == KeyEvent.KEYCODE_DPAD_RIGHT ||
+                keyCode == KeyEvent.KEYCODE_DPAD_CENTER ||
+                keyCode == KeyEvent.KEYCODE_BUTTON_A ||
+                keyCode == KeyEvent.KEYCODE_BUTTON_B;
+        if (!supported) return false;
+        if (event.getAction() != KeyEvent.ACTION_DOWN || event.getRepeatCount() > 0) return true;
+
+        if (keyCode == KeyEvent.KEYCODE_BUTTON_B) {
+            drawerLayout.closeDrawer(GravityCompat.START);
+            return true;
+        }
+
+        View focused = getCurrentFocus();
+        if (keyCode == KeyEvent.KEYCODE_BUTTON_A || keyCode == KeyEvent.KEYCODE_DPAD_CENTER) {
+            if (focused != null) focused.performClick();
+            return true;
+        }
+
+        int direction = keyCode == KeyEvent.KEYCODE_DPAD_UP ? View.FOCUS_UP :
+                keyCode == KeyEvent.KEYCODE_DPAD_DOWN ? View.FOCUS_DOWN :
+                keyCode == KeyEvent.KEYCODE_DPAD_LEFT ? View.FOCUS_LEFT : View.FOCUS_RIGHT;
+        View next = focused != null ? focused.focusSearch(direction) : findViewById(activeSidebarItemId);
+        if (next != null) next.requestFocus();
+        return true;
     }
 
     public InputControlsView getInputControlsView() {
