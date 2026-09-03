@@ -2517,10 +2517,11 @@ public class XServerDisplayActivity extends AppCompatActivity {
 
         int keyCode = event.getKeyCode();
         boolean controllerEvent = ExternalController.isGameController(event.getDevice());
-        // Retroid can report the controller's B face button as KEYCODE_BACK.
-        // Only accept Back from the Android/system input device for shutdown;
-        // game-controller Back/B events continue to the controller profile.
-        if (keyCode == KeyEvent.KEYCODE_BACK && !controllerEvent) {
+        // Retroid can report the B face button as KEYCODE_BACK too. Linux input
+        // identifies that physical face button as BTN_EAST (scan code 305), so
+        // exclude it while still accepting the handheld's dedicated Back key.
+        boolean retroidBButton = controllerEvent && event.getScanCode() == 305;
+        if (keyCode == KeyEvent.KEYCODE_BACK && !retroidBButton) {
             if (event.getAction() == KeyEvent.ACTION_DOWN && event.getRepeatCount() == 0)
                 requestContainerShutdown();
             return true;
