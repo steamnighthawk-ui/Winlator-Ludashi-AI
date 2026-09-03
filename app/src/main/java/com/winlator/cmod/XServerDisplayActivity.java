@@ -907,12 +907,12 @@ public class XServerDisplayActivity extends AppCompatActivity {
 
     @Override
     public void onBackPressed() {
-        if (environment != null) {
-            if (!drawerLayout.isDrawerOpen(GravityCompat.START)) {
-                drawerLayout.openDrawer(GravityCompat.START);
-            } else
-                drawerLayout.closeDrawers();
-        }
+        requestContainerShutdown();
+    }
+
+    private void requestContainerShutdown() {
+        if (environment == null || isFinishing()) return;
+        ContentDialog.confirm(this, R.string.confirm_manual_container_shutdown, this::exit);
     }
 
     private void showVibrationDialog() {
@@ -1525,7 +1525,7 @@ public class XServerDisplayActivity extends AppCompatActivity {
         if (btItemExit != null) {
             btItemExit.setOnClickListener(v -> {
                 drawerLayout.closeDrawers();
-                exit();
+                requestContainerShutdown();
             });
         }
     }
@@ -2517,67 +2517,18 @@ public class XServerDisplayActivity extends AppCompatActivity {
         int keyCode = event.getKeyCode();
         boolean controllerEvent = ExternalController.isGameController(event.getDevice());
 
-        // The controller Back/Select button belongs to Winlator while a session is active.
-        // Toggle the sidebar and never forward it to the hosted Windows app.
-        if (controllerEvent && keyCode == KeyEvent.KEYCODE_BUTTON_SELECT) {
+        // Controller Back/Select (and Android Back) is a dedicated, manual
+        // container shutdown shortcut. Confirmation prevents accidental exits.
+        if ((controllerEvent && keyCode == KeyEvent.KEYCODE_BUTTON_SELECT) ||
+                keyCode == KeyEvent.KEYCODE_BACK) {
             if (event.getAction() == KeyEvent.ACTION_DOWN && event.getRepeatCount() == 0)
-                toggleSidebarFromController();
+                requestContainerShutdown();
             return true;
         }
-
-        // While the drawer is open, let the controller operate Android sidebar
-        // controls instead of applying the game's controller profile.
-        if (controllerEvent && drawerLayout != null && drawerLayout.isDrawerOpen(GravityCompat.START) &&
-                handleSidebarControllerKey(event)) return true;
 
         return (!inputControlsView.onKeyEvent(event) && !winHandler.onKeyEvent(event)
                 && xServer.keyboard.onKeyEvent(event)) ||
                 (!ExternalController.isGameController(event.getDevice()) && super.dispatchKeyEvent(event));
-    }
-
-    private void toggleSidebarFromController() {
-        if (drawerLayout == null || environment == null) return;
-        if (drawerLayout.isDrawerOpen(GravityCompat.START)) {
-            drawerLayout.closeDrawer(GravityCompat.START);
-        } else {
-            drawerLayout.openDrawer(GravityCompat.START);
-            drawerLayout.post(() -> {
-                View active = findViewById(activeSidebarItemId);
-                if (active == null || !active.isShown()) active = findViewById(R.id.BTItemGraphics);
-                if (active != null) active.requestFocus();
-            });
-        }
-    }
-
-    private boolean handleSidebarControllerKey(KeyEvent event) {
-        int keyCode = event.getKeyCode();
-        boolean supported = keyCode == KeyEvent.KEYCODE_DPAD_UP ||
-                keyCode == KeyEvent.KEYCODE_DPAD_DOWN ||
-                keyCode == KeyEvent.KEYCODE_DPAD_LEFT ||
-                keyCode == KeyEvent.KEYCODE_DPAD_RIGHT ||
-                keyCode == KeyEvent.KEYCODE_DPAD_CENTER ||
-                keyCode == KeyEvent.KEYCODE_BUTTON_A ||
-                keyCode == KeyEvent.KEYCODE_BUTTON_B;
-        if (!supported) return false;
-        if (event.getAction() != KeyEvent.ACTION_DOWN || event.getRepeatCount() > 0) return true;
-
-        if (keyCode == KeyEvent.KEYCODE_BUTTON_B) {
-            drawerLayout.closeDrawer(GravityCompat.START);
-            return true;
-        }
-
-        View focused = getCurrentFocus();
-        if (keyCode == KeyEvent.KEYCODE_BUTTON_A || keyCode == KeyEvent.KEYCODE_DPAD_CENTER) {
-            if (focused != null) focused.performClick();
-            return true;
-        }
-
-        int direction = keyCode == KeyEvent.KEYCODE_DPAD_UP ? View.FOCUS_UP :
-                keyCode == KeyEvent.KEYCODE_DPAD_DOWN ? View.FOCUS_DOWN :
-                keyCode == KeyEvent.KEYCODE_DPAD_LEFT ? View.FOCUS_LEFT : View.FOCUS_RIGHT;
-        View next = focused != null ? focused.focusSearch(direction) : findViewById(activeSidebarItemId);
-        if (next != null) next.requestFocus();
-        return true;
     }
 
     public InputControlsView getInputControlsView() {
