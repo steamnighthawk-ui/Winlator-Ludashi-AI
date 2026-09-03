@@ -2517,9 +2517,9 @@ public class XServerDisplayActivity extends AppCompatActivity {
         int keyCode = event.getKeyCode();
         boolean controllerEvent = ExternalController.isGameController(event.getDevice());
 
-        // The Guide/Home button belongs to Winlator while a session is active.
+        // The controller Back/Select button belongs to Winlator while a session is active.
         // Toggle the sidebar and never forward it to the hosted Windows app.
-        if (keyCode == KeyEvent.KEYCODE_BUTTON_MODE || keyCode == KeyEvent.KEYCODE_HOME) {
+        if (controllerEvent && keyCode == KeyEvent.KEYCODE_BUTTON_SELECT) {
             if (event.getAction() == KeyEvent.ACTION_DOWN && event.getRepeatCount() == 0)
                 toggleSidebarFromController();
             return true;
@@ -2529,15 +2529,6 @@ public class XServerDisplayActivity extends AppCompatActivity {
         // controls instead of applying the game's controller profile.
         if (controllerEvent && drawerLayout != null && drawerLayout.isDrawerOpen(GravityCompat.START) &&
                 handleSidebarControllerKey(event)) return true;
-
-        if (event.getAction() == KeyEvent.ACTION_DOWN) {
-            if (event.getKeyCode() == KeyEvent.KEYCODE_BUTTON_SELECT) {
-                boolean handled = inputControlsView.onKeyEvent(event)
-                        || (winHandler != null && winHandler.onKeyEvent(event))
-                                && (xServer != null && xServer.keyboard.onKeyEvent(event));
-                return true;
-            }
-        }
 
         return (!inputControlsView.onKeyEvent(event) && !winHandler.onKeyEvent(event)
                 && xServer.keyboard.onKeyEvent(event)) ||
